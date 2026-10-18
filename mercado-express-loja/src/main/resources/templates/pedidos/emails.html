@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead('E-mails')}"></th:block>
+</head>
+<body>
+<nav th:replace="~{fragments :: navbar}"></nav>
+<div class="container">
+    <div class="page-header">
+        <div>
+            <h1>✉️ Controle de e-mails</h1>
+            <p class="subtitle">Todos os envios de confirmação de pagamento ficam registrados na tabela <code>TDS_MQ_TB_Email</code>.</p>
+        </div>
+    </div>
+    <div class="card">
+        <div class="table-wrap" th:if="${not #lists.isEmpty(emails)}">
+            <table>
+                <thead><tr><th>#</th><th>Data</th><th>Pedido</th><th>Destinatário</th><th>Assunto</th><th>Status</th></tr></thead>
+                <tbody>
+                <tr th:each="e : ${emails}">
+                    <td th:text="${e.id}">1</td>
+                    <td th:text="${#temporals.format(e.enviadoEm, 'dd/MM/yyyy HH:mm:ss')}">data</td>
+                    <td><a th:href="@{/pedidos/{id}(id=${e.pedidoId})}" th:text="'#' + ${e.pedidoId}">#1</a></td>
+                    <td th:text="${e.destinatario}">email</td>
+                    <td th:text="${e.assunto}">assunto</td>
+                    <td>
+                        <span class="status" th:classappend="'status-' + ${e.status}" th:text="${e.status}">STATUS</span>
+                        <div class="subtitle" th:if="${e.erro}" th:text="${e.erro}"></div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="empty-state" th:if="${#lists.isEmpty(emails)}">
+            <span class="emoji">📭</span>
+            <p>Nenhum e-mail enviado ainda.</p>
+        </div>
+    </div>
+</div>
+<footer th:replace="~{fragments :: footer}"></footer>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Fragments</title>
+</head>
+<body>
+
+<th:block th:fragment="pageHead(titulo)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${titulo} + ' | Mercado Express'">Mercado Express</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</th:block>
+
+<nav class="navbar" th:fragment="navbar">
+    <a th:href="@{/loja}" class="brand">🛒 Mercado<span class="dot">Express</span></a>
+    <div class="nav-links">
+        <a th:href="@{/loja}">Loja</a>
+        <a th:href="@{/pedidos}">Pedidos</a>
+        <a th:href="@{/emails}">E-mails</a>
+        <a th:href="@{/dashboard}">📊 Dashboard da gerência</a>
+    </div>
+    <div class="nav-actions">
+        <a th:href="@{/carrinho}" class="nav-cta">Carrinho <span class="cart-pill" th:text="${qtdCarrinho ?: 0}">0</span></a>
+    </div>
+</nav>
+
+<th:block th:fragment="alerts">
+    <div class="alert alert-success" th:if="${mensagemSucesso}" th:text="${mensagemSucesso}">Sucesso</div>
+    <div class="alert alert-error" th:if="${mensagemErro}" th:text="${mensagemErro}">Erro</div>
+</th:block>
+
+<footer class="footer" th:fragment="footer">
+    Mercado Express · CP5 Parte 2 · Microsserviços com RabbitMQ + Banco Tranquilo · FIAP TDS
+</footer>
+
+</body>
+</html>

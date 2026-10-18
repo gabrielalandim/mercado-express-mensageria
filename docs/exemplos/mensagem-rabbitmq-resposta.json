@@ -1,0 +1,8 @@
+{
+  "pedidoId": 1,
+  "codigoTransacao": "BT-7F3A9C21",
+  "status": "APROVADO",
+  "mensagem": "Pagamento aprovado pelo Banco Tranquilo.",
+  "valor": 22.59,
+  "processadoEm": "2026-10-14T10:30:01.512"
+}

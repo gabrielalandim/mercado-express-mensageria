@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead('Pedidos')}"></th:block>
+</head>
+<body>
+<nav th:replace="~{fragments :: navbar}"></nav>
+<div class="container">
+    <div class="page-header">
+        <div>
+            <h1>Pedidos</h1>
+            <p class="subtitle">Compras realizadas e o retorno do Banco Tranquilo (tabela <code>TDS_MQ_TB_Pedido</code>).</p>
+        </div>
+        <a th:href="@{/pedidos}" class="btn btn-outline">↻ Atualizar</a>
+    </div>
+
+    <th:block th:replace="~{fragments :: alerts}"></th:block>
+
+    <div class="card">
+        <div class="table-wrap" th:if="${not #lists.isEmpty(pedidos)}">
+            <table>
+                <thead>
+                <tr><th>#</th><th>Data</th><th>Cliente</th><th>Conta</th><th>Itens</th><th>Total</th><th>Status</th><th></th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="p : ${pedidos}">
+                    <td th:text="${p.id}">1</td>
+                    <td th:text="${#temporals.format(p.criadoEm, 'dd/MM/yyyy HH:mm:ss')}">data</td>
+                    <td><span th:text="${p.clienteNome}">nome</span><br><span class="subtitle" th:text="${p.clienteEmail}">email</span></td>
+                    <td th:text="${p.numeroConta}">conta</td>
+                    <td th:text="${p.quantidadeItens}">0</td>
+                    <td class="price" th:text="${'R$ ' + #numbers.formatDecimal(p.valorTotal, 1, 'POINT', 2, 'COMMA')}">R$</td>
+                    <td><span class="status" th:classappend="'status-' + ${p.status}" th:text="${p.status}">STATUS</span></td>
+                    <td><a th:href="@{/pedidos/{id}(id=${p.id})}" class="btn btn-outline btn-sm">Detalhes</a></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="empty-state" th:if="${#lists.isEmpty(pedidos)}">
+            <span class="emoji">🧾</span>
+            <p>Nenhum pedido ainda. <a th:href="@{/loja}">Ir para a loja</a></p>
+        </div>
+    </div>
+</div>
+<footer th:replace="~{fragments :: footer}"></footer>
+</body>
+</html>

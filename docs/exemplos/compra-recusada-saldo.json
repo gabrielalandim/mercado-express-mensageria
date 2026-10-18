@@ -1,0 +1,9 @@
+{
+  "clienteNome": "Cliente Sem Saldo",
+  "clienteEmail": "semsaldo@email.com",
+  "clienteCpf": "333.333.333-33",
+  "numeroConta": "2001-0",
+  "itens": [
+    { "produtoId": 7, "quantidade": 3 }
+  ]
+}

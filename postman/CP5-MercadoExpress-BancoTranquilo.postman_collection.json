@@ -1,0 +1,830 @@
+{
+  "info": {
+    "name": "CP5 - Mercado Express + Banco Tranquilo (RabbitMQ)",
+    "description": "Testes da integração Mercado Express <-> Banco Tranquilo via RabbitMQ. Rode a pasta 'Mercado Express (Loja)' em ordem (Collection Runner com delay de 2000 ms).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Mercado Express (Loja) - :8081",
+      "item": [
+        {
+          "name": "01 - Listar produtos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{loja}}/api/produtos",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "pm.test(\"Há produtos cadastrados\", () => pm.expect(p.length).to.be.above(0));",
+                  "pm.collectionVariables.set(\"produtoId\", p[0].id);",
+                  "pm.collectionVariables.set(\"produtoId2\", p[Math.min(1, p.length - 1)].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - Compra APROVADA (conta 1001-0)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{loja}}/api/compras",
+            "description": "Cria a compra e publica a solicitação em banco.tranquilo.pagamentos.exchange. Aguarde ~2s e rode a requisição 03.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteNome\": \"Maria Gabriela Landim Severo\",\n  \"clienteEmail\": \"gabi@email.com\",\n  \"clienteCpf\": \"111.111.111-11\",\n  \"numeroConta\": \"1001-0\",\n  \"itens\": [\n    {\n      \"produtoId\": {{produtoId}},\n      \"quantidade\": 2\n    },\n    {\n      \"produtoId\": {{produtoId2}},\n      \"quantidade\": 1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 202\", () => pm.response.to.have.status(202));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Pedido aguardando o Banco Tranquilo\", () => pm.expect(b.status).to.eql(\"AGUARDANDO_PAGAMENTO\"));",
+                  "pm.collectionVariables.set(\"pedidoId\", b.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Consultar status da compra",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{loja}}/api/compras/{{pedidoId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "console.log(\"Status do pedido\", b.id, b.status, b.mensagemBanco);",
+                  "pm.test(\"Status válido\", () => pm.expect([\"AGUARDANDO_PAGAMENTO\",\"APROVADO\",\"RECUSADO\",\"ERRO_COMUNICACAO\"]).to.include(b.status));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 - E-mails da compra",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{loja}}/api/compras/{{pedidoId}}/emails",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 - Compra RECUSADA (saldo insuficiente - 2001-0)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{loja}}/api/compras",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteNome\": \"Cliente Sem Saldo\",\n  \"clienteEmail\": \"semsaldo@email.com\",\n  \"clienteCpf\": \"333.333.333-33\",\n  \"numeroConta\": \"2001-0\",\n  \"itens\": [\n    {\n      \"produtoId\": {{produtoId}},\n      \"quantidade\": 3\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 202\", () => pm.response.to.have.status(202));",
+                  "pm.collectionVariables.set(\"pedidoRecusadoId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 - Compra RECUSADA (conta bloqueada - 3001-0)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{loja}}/api/compras",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteNome\": \"Cliente Conta Bloqueada\",\n  \"clienteEmail\": \"bloqueada@email.com\",\n  \"clienteCpf\": \"444.444.444-44\",\n  \"numeroConta\": \"3001-0\",\n  \"itens\": [\n    {\n      \"produtoId\": {{produtoId}},\n      \"quantidade\": 1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 202\", () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 - Compra RECUSADA (CPF não confere)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{loja}}/api/compras",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteNome\": \"Maria Gabriela\",\n  \"clienteEmail\": \"gabi@email.com\",\n  \"clienteCpf\": \"999.999.999-99\",\n  \"numeroConta\": \"1001-0\",\n  \"itens\": [\n    {\n      \"produtoId\": {{produtoId}},\n      \"quantidade\": 1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 202\", () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 - Compra inválida (validação 400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{loja}}/api/compras",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteNome\": \"\",\n  \"clienteEmail\": \"email-invalido\",\n  \"clienteCpf\": \"\",\n  \"numeroConta\": \"\",\n  \"itens\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09 - Listar compras",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{loja}}/api/compras",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10 - Controle de e-mails enviados",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{loja}}/api/emails",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11 - Dashboard (indicadores)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{loja}}/api/dashboard",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test(\"Possui faturamento e lucro\", () => { pm.expect(d).to.have.property(\"faturamento\"); pm.expect(d).to.have.property(\"lucro\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Banco Tranquilo API - :8082",
+      "item": [
+        {
+          "name": "01 - Info do serviço",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{banco}}/",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - Listar contas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{banco}}/api/contas",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Consultar conta 1001-0",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{banco}}/api/contas/1001-0",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 - Extrato conta 1001-0",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{banco}}/api/contas/1001-0/extrato",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 - Abrir conta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{banco}}/api/contas",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numeroConta\": \"1003-0\",\n  \"titular\": \"Novo Cliente\",\n  \"cpf\": \"555.555.555-55\",\n  \"email\": \"novo@email.com\",\n  \"saldoInicial\": 300.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 - Depósito",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{banco}}/api/contas/2001-0/deposito",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"valor\": 500.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 - Desbloquear conta 3001-0",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{banco}}/api/contas/3001-0/status?ativa=true",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 - Autorizar pagamento direto (síncrono)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{banco}}/api/pagamentos",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pedidoId\": 9001,\n  \"numeroConta\": \"1002-0\",\n  \"cpf\": \"22222222222\",\n  \"nomeCliente\": \"Samara Porto Souza\",\n  \"emailCliente\": \"samara@email.com\",\n  \"valor\": 49.9,\n  \"descricao\": \"Teste direto via Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Aprovado\", () => pm.expect(pm.response.json().status).to.eql(\"APROVADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09 - Listar transações",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{banco}}/api/transacoes",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "RabbitMQ Management API - :15672",
+      "item": [
+        {
+          "name": "01 - Visão geral (overview)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{rabbit}}/api/overview",
+            "description": "",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{rabbitUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{rabbitPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - Exchanges",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{rabbit}}/api/exchanges/%2F",
+            "description": "",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{rabbitUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{rabbitPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Filas e quantidade de mensagens",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{rabbit}}/api/queues/%2F",
+            "description": "",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{rabbitUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{rabbitPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const filas = pm.response.json().map(q => q.name);",
+                  "pm.test(\"Fila de requisições do banco existe\", () => pm.expect(filas).to.include(\"banco.tranquilo.pagamentos.request\"));",
+                  "pm.test(\"Fila de respostas da loja existe\", () => pm.expect(filas).to.include(\"mercado.express.pagamentos.response\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 - Bindings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{rabbit}}/api/bindings/%2F",
+            "description": "",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{rabbitUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{rabbitPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 - Publicar solicitação manual no exchange do banco",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{rabbit}}/api/exchanges/%2F/banco.tranquilo.pagamentos.exchange/publish",
+            "description": "Simula a Loja: publica uma solicitação direto no exchange. Como o pedido já foi processado, o banco reenvia o mesmo resultado (idempotência).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"properties\": {\n    \"content_type\": \"application/json\",\n    \"correlation_id\": \"teste-manual\"\n  },\n  \"routing_key\": \"pagamento.solicitado\",\n  \"payload\": \"{\\\"pedidoId\\\": {{pedidoId}}, \\\"numeroConta\\\": \\\"1001-0\\\", \\\"cpf\\\": \\\"11111111111\\\", \\\"nomeCliente\\\": \\\"Maria Gabriela Landim Severo\\\", \\\"emailCliente\\\": \\\"gabi@email.com\\\", \\\"valor\\\": 10.0, \\\"descricao\\\": \\\"Publicado manualmente via Management API\\\"}\",\n  \"payload_encoding\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{rabbitUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{rabbitPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Mensagem roteada\", () => pm.expect(pm.response.json().routed).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 - Ler mensagens da DLQ do banco",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{rabbit}}/api/queues/%2F/banco.tranquilo.pagamentos.request.dlq/get",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"count\": 5,\n  \"ackmode\": \"ack_requeue_true\",\n  \"encoding\": \"auto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{rabbitUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{rabbitPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "loja",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "banco",
+      "value": "http://localhost:8082"
+    },
+    {
+      "key": "rabbit",
+      "value": "http://localhost:15672"
+    },
+    {
+      "key": "rabbitUser",
+      "value": "guest"
+    },
+    {
+      "key": "rabbitPassword",
+      "value": "guest"
+    },
+    {
+      "key": "produtoId",
+      "value": "1"
+    },
+    {
+      "key": "produtoId2",
+      "value": "2"
+    },
+    {
+      "key": "pedidoId",
+      "value": "1"
+    },
+    {
+      "key": "pedidoRecusadoId",
+      "value": ""
+    }
+  ]
+}

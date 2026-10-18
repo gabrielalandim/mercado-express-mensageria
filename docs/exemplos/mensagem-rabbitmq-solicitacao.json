@@ -1,0 +1,10 @@
+{
+  "pedidoId": 1,
+  "numeroConta": "1001-0",
+  "cpf": "11111111111",
+  "nomeCliente": "Maria Gabriela Landim Severo",
+  "emailCliente": "gabi@email.com",
+  "valor": 22.59,
+  "descricao": "Compra Mercado Express - Pedido #1",
+  "solicitadoEm": "2026-10-14T10:30:00"
+}

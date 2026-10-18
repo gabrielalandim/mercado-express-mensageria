@@ -1,0 +1,33 @@
+### Mercado Express + Banco Tranquilo — testes (IntelliJ HTTP Client / VS Code REST Client)
+@loja = http://localhost:8081
+@banco = http://localhost:8082
+
+### 1. Produtos
+GET {{loja}}/api/produtos
+
+### 2. Compra aprovada
+POST {{loja}}/api/compras
+Content-Type: application/json
+
+< ./exemplos/compra-aprovada.json
+
+### 3. Compra recusada (saldo insuficiente)
+POST {{loja}}/api/compras
+Content-Type: application/json
+
+< ./exemplos/compra-recusada-saldo.json
+
+### 4. Status da compra 1
+GET {{loja}}/api/compras/1
+
+### 5. E-mails enviados
+GET {{loja}}/api/emails
+
+### 6. Dashboard
+GET {{loja}}/api/dashboard
+
+### 7. Contas do Banco Tranquilo
+GET {{banco}}/api/contas
+
+### 8. Transações do Banco Tranquilo
+GET {{banco}}/api/transacoes

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead('Dashboard da gerência')}"></th:block>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+<nav th:replace="~{fragments :: navbar}"></nav>
+
+<div class="container" style="max-width:1200px;">
+    <div class="page-header">
+        <div>
+            <h1>📊 Dashboard da gerência</h1>
+            <p class="subtitle">Compras realizadas, vendas, lucros e estoque do Mercado Express.</p>
+        </div>
+        <a th:href="@{/dashboard}" class="btn btn-outline">↻ Atualizar</a>
+    </div>
+
+    <div class="stats cols-5">
+        <div class="stat">
+            <div class="label">Faturamento</div>
+            <div class="value money" th:text="${'R$ ' + #numbers.formatDecimal(d.faturamento(), 1, 'POINT', 2, 'COMMA')}">R$ 0</div>
+            <div class="hint-small">pedidos aprovados</div>
+        </div>
+        <div class="stat">
+            <div class="label">Lucro</div>
+            <div class="value money" th:text="${'R$ ' + #numbers.formatDecimal(d.lucro(), 1, 'POINT', 2, 'COMMA')}">R$ 0</div>
+            <div class="hint-small" th:text="'custo: R$ ' + ${#numbers.formatDecimal(d.custo(), 1, 'POINT', 2, 'COMMA')}">custo</div>
+        </div>
+        <div class="stat">
+            <div class="label">Pedidos</div>
+            <div class="value" th:text="${d.totalPedidos()}">0</div>
+            <div class="hint-small" th:text="${d.pedidosAprovados()} + ' aprovados · ' + ${d.pedidosRecusados()} + ' recusados'">-</div>
+        </div>
+        <div class="stat">
+            <div class="label">Ticket médio</div>
+            <div class="value" th:text="${'R$ ' + #numbers.formatDecimal(d.ticketMedio(), 1, 'POINT', 2, 'COMMA')}">R$ 0</div>
+            <div class="hint-small" th:text="'aprovação: ' + ${d.taxaAprovacao()} + '%'">-</div>
+        </div>
+        <div class="stat">
+            <div class="label">E-mails enviados</div>
+            <div class="value" th:text="${d.emailsEnviados()}">0</div>
+            <div class="hint-small" th:text="${d.emailsComFalha()} + ' com falha'">-</div>
+        </div>
+    </div>
+
+    <div class="stats">
+        <div class="stat">
+            <div class="label">Itens vendidos</div>
+            <div class="value" th:text="${d.itensVendidos()}">0</div>
+        </div>
+        <div class="stat">
+            <div class="label">Aguardando banco</div>
+            <div class="value" th:text="${d.pedidosAguardando()}">0</div>
+        </div>
+        <div class="stat">
+            <div class="label">Valor em estoque</div>
+            <div class="value money" th:text="${'R$ ' + #numbers.formatDecimal(d.valorEstoque(), 1, 'POINT', 2, 'COMMA')}">R$ 0</div>
+        </div>
+        <div class="stat">
+            <div class="label">Produtos c/ estoque baixo</div>
+            <div class="value" th:text="${d.produtosEstoqueBaixo()}">0</div>
+        </div>
+    </div>
+
+    <div class="charts">
+        <div class="chart-card"><h3>Vendas por dia (R$) — últimos 7 dias</h3><canvas id="chartVendas"></canvas></div>
+        <div class="chart-card"><h3>Lucro por dia (R$)</h3><canvas id="chartLucro"></canvas></div>
+        <div class="chart-card"><h3>Status dos pedidos</h3><canvas id="chartStatus"></canvas></div>
+        <div class="chart-card"><h3>Top 5 produtos mais vendidos (un.)</h3><canvas id="chartTop"></canvas></div>
+        <div class="chart-card"><h3>Faturamento por categoria (R$)</h3><canvas id="chartCategoria"></canvas></div>
+        <div class="chart-card"><h3>Estoque por produto (un.)</h3><canvas id="chartEstoque"></canvas></div>
+    </div>
+
+    <div class="grid-2">
+        <div class="card">
+            <div class="card-pad" style="padding-bottom:0;"><h3 style="margin:0;">Últimas compras</h3></div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>#</th><th>Data</th><th>Cliente</th><th>Total</th><th>Status</th></tr></thead>
+                    <tbody>
+                    <tr th:each="p : ${ultimosPedidos}">
+                        <td><a th:href="@{/pedidos/{id}(id=${p.id})}" th:text="${p.id}">1</a></td>
+                        <td th:text="${#temporals.format(p.criadoEm, 'dd/MM HH:mm')}">data</td>
+                        <td th:text="${p.clienteNome}">nome</td>
+                        <td class="price" th:text="${'R$ ' + #numbers.formatDecimal(p.valorTotal, 1, 'POINT', 2, 'COMMA')}">R$</td>
+                        <td><span class="status" th:classappend="'status-' + ${p.status}" th:text="${p.status}">S</span></td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(ultimosPedidos)}"><td colspan="5" class="subtitle">Nenhuma compra ainda.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-pad" style="padding-bottom:0;"><h3 style="margin:0;">Últimos e-mails</h3></div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Pedido</th><th>Destinatário</th><th>Data</th><th>Status</th></tr></thead>
+                    <tbody>
+                    <tr th:each="e : ${ultimosEmails}">
+                        <td th:text="'#' + ${e.pedidoId}">#1</td>
+                        <td th:text="${e.destinatario}">email</td>
+                        <td th:text="${#temporals.format(e.enviadoEm, 'dd/MM HH:mm')}">data</td>
+                        <td><span class="status" th:classappend="'status-' + ${e.status}" th:text="${e.status}">S</span></td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(ultimosEmails)}"><td colspan="4" class="subtitle">Nenhum e-mail ainda.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card card-pad" style="margin-top:20px;" th:if="${not #lists.isEmpty(estoqueBaixo)}">
+        <h3 style="margin-top:0;">⚠️ Estoque baixo (≤ <span th:text="${limiteEstoque}">10</span> un.)</h3>
+        <span class="badge badge-low" style="margin:0 6px 6px 0;" th:each="p : ${estoqueBaixo}"
+              th:text="${p.nome} + ': ' + ${p.estoque} + ' un.'">produto</span>
+    </div>
+</div>
+
+<footer th:replace="~{fragments :: footer}"></footer>
+
+<script th:inline="javascript">
+    const apiUrl = /*[[@{/api/dashboard}]]*/ '/api/dashboard';
+    const ROSA = '#E6007A', VERDE = '#1FA971', AZUL = '#1D4F91', AMARELO = '#C98A00', VERMELHO = '#D8395B', CINZA = '#6B6875';
+    const PALETA = [ROSA, AZUL, VERDE, AMARELO, VERMELHO, CINZA, '#8E44AD', '#16A085'];
+    const brl = v => 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+    function grafico(id, tipo, serie, opcoes) {
+        const el = document.getElementById(id);
+        if (!el || typeof Chart === 'undefined') return;
+        new Chart(el, {
+            type: tipo,
+            data: {
+                labels: serie.labels,
+                datasets: [{
+                    label: opcoes.label || '',
+                    data: serie.valores.map(Number),
+                    backgroundColor: opcoes.cores || ROSA,
+                    borderColor: opcoes.borda || opcoes.cores || ROSA,
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: tipo === 'line'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {display: tipo === 'doughnut'},
+                    tooltip: {callbacks: {label: ctx => opcoes.moeda ? brl(ctx.raw) : ctx.raw}}
+                },
+                indexAxis: opcoes.horizontal ? 'y' : 'x',
+                scales: tipo === 'doughnut' ? {} : {y: {beginAtZero: true}, x: {beginAtZero: true}}
+            }
+        });
+    }
+
+    fetch(apiUrl)
+        .then(r => r.json())
+        .then(d => {
+            grafico('chartVendas', 'line', d.vendasPorDia, {label: 'Vendas', cores: 'rgba(230,0,122,0.15)', borda: ROSA, moeda: true});
+            grafico('chartLucro', 'bar', d.lucroPorDia, {label: 'Lucro', cores: VERDE, moeda: true});
+            grafico('chartStatus', 'doughnut', d.statusPedidos, {cores: [VERDE, VERMELHO, AMARELO, CINZA]});
+            grafico('chartTop', 'bar', d.topProdutos, {label: 'Unidades', cores: AZUL, horizontal: true});
+            grafico('chartCategoria', 'bar', d.faturamentoPorCategoria, {label: 'Faturamento', cores: PALETA, moeda: true});
+            grafico('chartEstoque', 'bar', d.estoquePorProduto, {label: 'Estoque', cores: AMARELO});
+        })
+        .catch(e => console.error('Erro ao carregar o dashboard', e));
+</script>
+</body>
+</html>

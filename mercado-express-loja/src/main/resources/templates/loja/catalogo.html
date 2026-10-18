@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead('Loja')}"></th:block>
+</head>
+<body>
+<nav th:replace="~{fragments :: navbar}"></nav>
+
+<div class="container">
+    <div class="welcome">
+        <h1>Mercado Express 🛍️</h1>
+        <p>Escolha seus produtos, finalize a compra e pague com a sua conta do <strong>Banco Tranquilo</strong>.
+            A confirmação do pagamento chega no seu e-mail.</p>
+    </div>
+
+    <th:block th:replace="~{fragments :: alerts}"></th:block>
+
+    <div class="product-grid" th:if="${not #lists.isEmpty(produtos)}">
+        <div class="product-card" th:each="p : ${produtos}">
+            <span class="badge" th:text="${p.tipo}">Tipo</span>
+            <h3 th:text="${p.nome}">Produto</h3>
+            <div class="meta" th:text="${p.tamanho} + ' · ' + ${p.setor}">Tamanho · Setor</div>
+            <div class="price" th:text="${'R$ ' + #numbers.formatDecimal(p.preco, 1, 'POINT', 2, 'COMMA')}">R$ 0,00</div>
+            <div class="meta" th:text="${p.estoque gt 0 ? 'Em estoque: ' + p.estoque + ' un.' : 'Esgotado'}">Estoque</div>
+            <form th:action="@{/carrinho/adicionar}" method="post" class="qty-form" th:if="${p.estoque gt 0}">
+                <input type="hidden" name="produtoId" th:value="${p.id}">
+                <input type="number" name="quantidade" value="1" min="1" th:max="${p.estoque}">
+                <button type="submit" class="btn btn-primary btn-sm">Adicionar</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card empty-state" th:if="${#lists.isEmpty(produtos)}">
+        <span class="emoji">📦</span>
+        <p>Nenhum produto cadastrado.</p>
+    </div>
+</div>
+<footer th:replace="~{fragments :: footer}"></footer>
+</body>
+</html>

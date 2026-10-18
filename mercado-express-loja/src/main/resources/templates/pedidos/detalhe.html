@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments :: pageHead('Pedido #' + ${pedido.id})}"></th:block>
+    <meta http-equiv="refresh" content="2" th:if="${pedido.status.name() == 'AGUARDANDO_PAGAMENTO'}">
+</head>
+<body>
+<nav th:replace="~{fragments :: navbar}"></nav>
+<div class="container">
+    <div class="page-header">
+        <div>
+            <p class="subtitle" th:text="${#temporals.format(pedido.criadoEm, 'dd/MM/yyyy HH:mm:ss')}">data</p>
+            <h1>Pedido #<span th:text="${pedido.id}">1</span>
+                <span class="status" th:classappend="'status-' + ${pedido.status}" th:text="${pedido.status}">STATUS</span>
+            </h1>
+        </div>
+        <a th:href="@{/pedidos}" class="btn btn-outline">← Pedidos</a>
+    </div>
+
+    <th:block th:replace="~{fragments :: alerts}"></th:block>
+
+    <div class="grid-2">
+        <div class="card card-pad">
+            <h3 style="margin-top:0;">Integração com o Banco Tranquilo</h3>
+            <ul class="timeline">
+                <li class="done">
+                    <strong>Pedido criado</strong> e gravado no PostgreSQL<br>
+                    <span class="subtitle" th:text="${#temporals.format(pedido.criadoEm, 'HH:mm:ss')}"></span>
+                </li>
+                <li th:classappend="${pedido.status.name() == 'ERRO_COMUNICACAO' ? 'fail' : 'done'}">
+                    <strong>Solicitação publicada</strong> em <code>banco.tranquilo.pagamentos.exchange</code>
+                    (routing key <code>pagamento.solicitado</code>)
+                </li>
+                <li class="wait" th:if="${pedido.status.name() == 'AGUARDANDO_PAGAMENTO'}">
+                    <strong>Aguardando resposta do Banco Tranquilo…</strong> ⏳
+                </li>
+                <li th:if="${pedido.status.name() == 'APROVADO'}" class="done">
+                    <strong>Pagamento APROVADO</strong> · transação <code th:text="${pedido.codigoTransacao}"></code><br>
+                    <span class="subtitle" th:text="${pedido.mensagemBanco}"></span>
+                </li>
+                <li th:if="${pedido.status.name() == 'RECUSADO'}" class="fail">
+                    <strong>Pagamento RECUSADO</strong><br>
+                    <span class="subtitle" th:text="${pedido.mensagemBanco}"></span>
+                </li>
+                <li th:if="${pedido.status.name() == 'ERRO_COMUNICACAO'}" class="fail">
+                    <strong>Erro de comunicação com o broker</strong><br>
+                    <span class="subtitle" th:text="${pedido.mensagemBanco}"></span>
+                </li>
+                <li th:if="${pedido.status.name() == 'APROVADO'}"
+                    th:classappend="${#lists.isEmpty(emails) ? 'wait' : (emails[0].status.name() == 'ENVIADO' ? 'done' : 'fail')}">
+                    <strong>E-mail de confirmação</strong>
+                    <span th:if="${#lists.isEmpty(emails)}">sendo enviado…</span>
+                    <span th:unless="${#lists.isEmpty(emails)}"
+                          th:text="${emails[0].status.name() == 'ENVIADO' ? 'enviado para ' + emails[0].destinatario : 'falhou: ' + emails[0].erro}"></span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card card-pad">
+            <h3 style="margin-top:0;">Comprador</h3>
+            <p><strong th:text="${pedido.clienteNome}">nome</strong><br>
+                <span th:text="${pedido.clienteEmail}">email</span><br>
+                Conta Banco Tranquilo: <code th:text="${pedido.numeroConta}">conta</code></p>
+            <p th:if="${pedido.processadoEm}" class="subtitle"
+               th:text="'Processado em ' + ${#temporals.format(pedido.processadoEm, 'dd/MM/yyyy HH:mm:ss')}"></p>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Produto</th><th>Qtd.</th><th>Preço unit.</th><th>Subtotal</th></tr></thead>
+                <tbody>
+                <tr th:each="i : ${pedido.itens}">
+                    <td th:text="${i.produtoNome}">produto</td>
+                    <td th:text="${i.quantidade}">1</td>
+                    <td th:text="${'R$ ' + #numbers.formatDecimal(i.precoUnitario, 1, 'POINT', 2, 'COMMA')}">R$</td>
+                    <td class="price" th:text="${'R$ ' + #numbers.formatDecimal(i.subtotal, 1, 'POINT', 2, 'COMMA')}">R$</td>
+                </tr>
+                <tr class="total-row">
+                    <td colspan="3">Total</td>
+                    <td class="price" th:text="${'R$ ' + #numbers.formatDecimal(pedido.valorTotal, 1, 'POINT', 2, 'COMMA')}">R$</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<footer th:replace="~{fragments :: footer}"></footer>
+</body>
+</html>

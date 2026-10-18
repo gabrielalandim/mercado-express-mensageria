@@ -1,0 +1,71 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mx-postgres
+    environment:
+      POSTGRES_DB: mercadoexpress
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: mx-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mx-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  banco-tranquilo-api:
+    profiles: ["apps"]
+    build: ./banco-tranquilo-api
+    container_name: mx-banco-tranquilo
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    environment:
+      DB_HOST: postgres
+      RABBITMQ_HOST: rabbitmq
+    ports:
+      - "8082:8082"
+
+  mercado-express-loja:
+    profiles: ["apps"]
+    build: ./mercado-express-loja
+    container_name: mx-loja
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      mailpit: { condition: service_started }
+    environment:
+      DB_HOST: postgres
+      RABBITMQ_HOST: rabbitmq
+      MAIL_HOST: mailpit
+    ports:
+      - "8081:8081"
+
+volumes:
+  pgdata:
