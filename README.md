@@ -7,7 +7,7 @@ Projeto do **Checkpoint 5 - Parte 2 (Microsserviços e Mensageria)** da discipli
 > *"Quem ouve, esquece. Quem vê, lembra. Quem faz, aprende."*
 
 💻 **IDE utilizada:** IntelliJ IDEA
-🎥 **Vídeo de demonstração:** _inserir o link do YouTube (não listado)_
+🎥 **Vídeo de demonstração:** https://www.youtube.com/watch?v=LaKVS4nve-A
 
 ---
 
